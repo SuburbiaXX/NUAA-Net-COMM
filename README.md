@@ -49,4 +49,5 @@
 ### 情况
 - 参考了一堆代码，还是有些不懂的地方
 - 非常感谢以下两位大佬的代码
-  - 
+  - [@FlyAndNotDown](https://github.com/FlyAndNotDown/ns3-work)
+  - [@RMDE](https://github.com/RMDE/Telecommunication)
