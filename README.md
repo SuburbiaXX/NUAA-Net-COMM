@@ -51,3 +51,94 @@
 - 非常感谢以下两位大佬的代码
   - [@FlyAndNotDown](https://github.com/FlyAndNotDown/ns3-work)
   - [@RMDE](https://github.com/RMDE/Telecommunication)
+
+## project 4
+- 利用 NS3 部署一个 LTE 网络，并绘制仿真的 Radio Environment Map
+### 思路
+- 根据提供的参数对 src/lte/example/lena-dual-stripe.cc 这个文件进行修改，使其符合要求，同时需要利用相关软件对 lte 网络情况进行可视化的表示
+### 情况
+- 修改情况参考如下 [CSDN文章](https://blog.csdn.net/Shmily1107/article/details/110919007)
+- 修改参数后用 NS3 编译执行后会产生如下文件，即 proj4 下的文件，情况如下
+  ```
+  proj4
+  |----buildings.txt  # 仿真的建筑物信息
+  |----enbs.txt   # 仿真的基站信息
+  |----lte.cc   # 修改 lena-dual-stripe.cc 后的文件，需要放在 scratch 目录下利用 waf 编译运行
+  |----plot_script  # 用于绘制 Radio Environment Map 的脚本文件
+  |----proj4.rem  # 编译运行 lte.cc 后生成的 rem 文件，其中包含网络不同位置的信号强度信息
+  |----proj4.sh   # 用于执行 lte.cc 的脚本文件，简化输入流程
+  |----ues.txt  # 仿真的用户信息
+  ```
+- 感谢大佬 [@Messiah](https://github.com/Messiahccgr) 的指导和帮助
+
+## project 5
+- 基于 proj4，实现 LTE 网络数据的统计
+- 在 proj4 的基础上，实现对 LTE 网络中数据的统计，其中包括，统计用户当前接入基站的RSRP，SINR，吞吐量以及距离基站的距离
+### 思路
+- 需要先在 proj4 中的 lte.cc 下添加 `lteHelper->EnablePhyTraces();` 语句，启用 LTE 模块中物理层的跟踪功能，这样才使得仿真过程的交互可以被记录
+- 然后执行 proj5.sh 脚本，其中已经写好了编译的相关参数，具体参数下面会提到
+- 计算吞吐量
+  - 在 lte.cc 编译完后生成的 ulrdatastats.txt  和 dlrdatastats.txt 文件分别表示的是上行链路（Uplink）和下行链路（Downlink）的RLC层统计数据，他们分别表示着从用户设备到基站和从基站到用户设备的数据传输情况
+    - 计算的 python 脚本为 cal1.py，其中计算吞吐量的公式来由在 ns-3.30.1/src/lte/doc/source/lte-user.rst 中
+    - 运行生成的 tu.txt 表示每个基站的吐量，tun.txt 表示每个基站的吞量
+- 计算 RSRP 和 SINR 
+  - 利用的是 dlrspsinr.txt 文件，这是用于记录下行链路（从基站到移动设备）的 RSRP 和 SINR 数据。其中 RSRP 表示的是接收信号强度参考功率，SINR 表示的是信噪比。这两个参数都是用来衡量信号质量的
+    - 计算的 python 脚本为 cal2.py
+    - 从生成的 RSRP-SINR-AVG.csv 文件中可以看到每个基站的平均 RSRP 和 SINR，转换成 dB
+- 计算距离基站的距离
+  - NS-3提供了获取节点位置的方法，只需要对于每个 UE，找到它所连接的 eNB，并计算它们之间的距离即可
+  - 具体的实现在 lte.cc 中的 `Simulator::Run ();` 后，添加如下代码
+    ```c++
+    std::ofstream distanceFile;
+    distanceFile.open("Distance.txt");
+    // 获取 UE 和 eNB 节点
+	    NodeContainer ueNodes ;
+    NodeContainer enbNodes ;
+    ueNodes.Add(homeUes);
+    ueNodes.Add(macroUes);
+    enbNodes.Add(homeEnbs);
+    enbNodes.Add(macroEnbs);
+    for (NodeContainer::Iterator ue = ueNodes.Begin (); ue != ueNodes.End (); ++ue)
+    {
+        Ptr<Node> ueNode = (*ue);
+        Ptr<MobilityModel> ueMobility = ueNode->GetObject<MobilityModel>();
+        // 获取 UE 的连接 eNB
+        Ptr<LteUeNetDevice> ueLteDevice = ueNode->GetDevice(0)->GetObject<LteUeNetDevice>();
+        if (ueLteDevice)
+        {
+            Ptr<LteEnbNetDevice> connectedEnb = ueLteDevice->GetTargetEnb();
+            // 获取 eNB 的位置
+            for (NodeContainer::Iterator enb = enbNodes.Begin (); enb != enbNodes.End (); ++enb)
+            {
+                Ptr<Node> enbNode = (*enb);
+                if (enbNode->GetDevice(0) == connectedEnb)
+                {
+                    Ptr<MobilityModel> enbMobility = enbNode->GetObject<MobilityModel>();
+                    double distance = ueMobility->GetDistanceFrom(enbMobility);
+                    // 将距离信息写入文件
+                    distanceFile << "UE ID: " << ueNode->GetId() << " connected to eNB ID: " << enbNode->GetId() << " Distance: " << distance << " meters" << std::endl;
+                    break;
+                }
+            }
+        }
+    }
+    ```
+  - 生成的 Distance.txt 文件中可以看到每个 UE 距离所连接的 eNB 的距离
+- proj5 文件夹情况
+  ```
+  proj5
+  |----cal1.py  # 计算吞吐量的 python 脚本
+  |----cal2.py  # 计算每个基站 RSRP 和 SINR 均值的 python 脚本
+  |----Distance.txt  # 每个 UE 距离所连接的 eNB 的距离结果
+  |----dlrdatastats.txt  # 下行链路的 RLC 层统计数据
+  |----dlrspsinr.txt  # 下行链路的 RSRP 和 SINR 数据
+  |----lte.cc  # 修改后的文件，需要放在 scratch 目录下利用 waf 编译运行
+  |----proj5.sh  # 编译运行 lte.cc 的脚本文件
+  |----RSRP-SINR-AVG.csv  # 每个基站的平均 RSRP 和 SINR
+  |----tu.txt  # 每个基站的吐量
+  |----tun.txt  # 每个基站的吞量
+  |----ulrdatastats.txt  # 上行链路的 RLC 层统计数据
+  |----ulrsinr.txt  # 上行链路的 SINR 数据
+  ```
+### 情况
+- 感谢大佬 [@Messiah](https://github.com/Messiahccgr) 的指导和帮助

@@ -1,0 +1,8 @@
+set object 1 rect from 1270.58,397.23 to 1370.58,437.23 front fs empty 
+set object 2 rect from 1270.58,447.23 to 1370.58,487.23 front fs empty 
+set object 3 rect from 882.665,161.471 to 982.665,201.471 front fs empty 
+set object 4 rect from 882.665,211.471 to 982.665,251.471 front fs empty 
+set object 5 rect from 676.813,73.7451 to 776.813,113.745 front fs empty 
+set object 6 rect from 676.813,123.745 to 776.813,163.745 front fs empty 
+set object 7 rect from 465.946,-227.575 to 565.946,-187.575 front fs empty 
+set object 8 rect from 465.946,-177.575 to 565.946,-137.575 front fs empty 
